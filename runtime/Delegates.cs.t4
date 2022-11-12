@@ -1,0 +1,137 @@
+// vim: set filetype=c :
+//
+// Delegates.generated.cs:
+//
+// Authors:
+//   Rolf Bjarne Kvinge <rolf@xamarin.com>
+//
+// Copyright 2013-2014 Xamarin Inc.
+//
+
+/*
+ * This file was generated from Delegates.cs.t4, any modifications will be lost once this file is re-generated.
+ */
+
+<#@ include file="delegates.t4" #>
+#if !COREBUILD
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.InteropServices;
+
+using Foundation;
+using Registrar;
+
+namespace ObjCRuntime {
+	public unsafe partial class Runtime {
+		
+<# foreach (var d in delegates) { #>
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#if NET\n");
+#>
+		internal delegate <#= d.ReturnType.MType #> <#= d.SimpleEntryPoint #>_delegate (<#= d.MArgumentSignature #>);
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#endif // NET\n");
+#>
+<# } #>
+
+		internal struct Delegates {
+<# foreach (var d in delegates) { #>
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#if NET\n");
+#>
+			public IntPtr <#= d.SimpleEntryPoint #>;
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#endif // NET\n");
+#>
+<# } #>
+		}
+
+<# 		foreach (var d in delegates) { #>
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#if NET\n");
+#>
+		[MonoPInvokeCallback (typeof (<#= d.SimpleEntryPoint #>_delegate))]
+		static <#= d.ReturnType.MType #> <#= d.SimpleEntryPoint #> (<#= d.MArgumentSignature #>)
+<# if (d.ExceptionHandling) { #>
+		{	
+			exception_gchandle = IntPtr.Zero;
+			try {
+<# if (string.IsNullOrEmpty (d.WrappedManagedFunction)) { #>
+				throw new NotImplementedException ();
+<# } else { #>
+				<# if (d.ReturnType.MType != "void") { #>return <# } #><#=d.WrappedManagedFunction#> (<#=d.MArgumentNames#>);
+<# } #>
+			} catch (Exception ex) {
+				var handle = GCHandle.Alloc (ex, GCHandleType.Normal);
+				exception_gchandle = GCHandle.ToIntPtr (handle);
+<# if (d.SimpleEntryPoint == "get_nsobject_with_type") { #>				created = false;
+<# } #>
+<# if (d.ReturnType.MType != "void") { #>				return default (<#= d.ReturnType.MType #>);
+<# } #>
+			}
+		}
+<# } else { #>
+		{	
+<# if (string.IsNullOrEmpty (d.WrappedManagedFunction)) { #>
+			throw new NotImplementedException ();
+<# } else { #>
+			<# if (d.ReturnType.MType != "void") { #>return <# } #><#=d.WrappedManagedFunction#> (<#=d.MArgumentNames#>);
+<# } #>
+		}
+<# } #>
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#endif // NET\n");
+#>
+
+<# } #>
+
+		[BindingImpl (BindingImplOptions.Optimizable)] // To inline the Runtime.DynamicRegistrationSupported code if possible.
+		static void RegisterDelegates (InitializationOptions* options)
+		{
+<# foreach (var d in delegates) {
+	if (d.OnlyDynamicUsage) continue; #>
+<#
+	if (d.OnlyCoreCLR) {
+		Write ("#if NET\n");
+		Write ("\t\t\tif (IsCoreCLR)\n\t");
+	}
+#>
+			options->Delegates-><#= d.SimpleEntryPoint #> = GetFunctionPointer (new <#= d.SimpleEntryPoint #>_delegate (<#= d.SimpleEntryPoint #>));
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#endif // NET\n");
+#>
+<# } #>
+
+			// The linker will remove this condition (and the subsequent method call) if possible
+			if (DynamicRegistrationSupported)
+				RegisterDelegatesDynamic (options);
+		}
+
+		static void RegisterDelegatesDynamic (InitializationOptions* options)
+		{
+<# foreach (var d in delegates) {
+	if (!d.OnlyDynamicUsage) continue; #>
+<#
+	if (d.OnlyCoreCLR) {
+		Write ("#if NET\n");
+		Write ("\t\t\tif (IsCoreCLR)\n\t");
+	}
+#>
+			options->Delegates-><#= d.SimpleEntryPoint #> = GetFunctionPointer (new <#= d.SimpleEntryPoint #>_delegate (<#= d.SimpleEntryPoint #>));
+<#
+		if (d.OnlyCoreCLR)
+			Write ("#endif // NET\n");
+#>
+<# } #>
+		}
+	}
+}
+#endif
